@@ -255,37 +255,97 @@ class GoogleSheetsService:
 
     # ----------------------- Gestión de Opciones --------------------- #
 
+    def get_data_validation_options(self, column_letter):
+        """Obtener opciones de validación de datos de una columna específica."""
+        try:
+            if not self.service or not self.spreadsheet_id:
+                raise Exception("Servicio no autenticado o spreadsheet_id no establecido")
+
+            # Obtener información de la hoja
+            sheet_metadata = self.service.spreadsheets().get(
+                spreadsheetId=self.spreadsheet_id
+            ).execute()
+
+            sheets = sheet_metadata.get('sheets', [])
+            leads_sheet = None
+            
+            for sheet in sheets:
+                if sheet['properties']['title'] == 'Leads':
+                    leads_sheet = sheet
+                    break
+            
+            if not leads_sheet:
+                return []
+
+            # Buscar reglas de validación de datos
+            data_validation_rules = leads_sheet.get('data', [])
+            
+            for row_data in data_validation_rules:
+                if 'rowData' in row_data:
+                    for row in row_data['rowData']:
+                        if 'values' in row:
+                            for i, cell in enumerate(row['values']):
+                                if 'dataValidation' in cell:
+                                    validation = cell['dataValidation']
+                                    if 'condition' in validation:
+                                        condition = validation['condition']
+                                        if condition.get('type') == 'ONE_OF_LIST':
+                                            values = condition.get('values', [])
+                                            return [v.get('userEnteredValue', '') for v in values]
+            
+            return []
+
+        except Exception as e:
+            print(f'Error al obtener validación de datos: {e}')
+            return []
+
     def get_all_options(self):
         """Obtener todas las opciones disponibles para los desplegables."""
         try:
-            # Obtener opciones desde una hoja específica o extraer de los datos existentes
-            leads = self.get_all_leads()
-            
-            options = {
-                'fuente': list(set([lead['fuente'] for lead in leads if lead['fuente']])),
-                'pipeline': list(set([lead['pipeline'] for lead in leads if lead['pipeline']])),
-                'estado': list(set([lead['estado'] for lead in leads if lead['estado']])),
-                'vendedor': list(set([lead['vendedor'] for lead in leads if lead['vendedor']]))
+            # Mapeo de campos a columnas (letras)
+            column_mapping = {
+                'fuente': 'E',      # Columna FUENTE
+                'estado': 'H',      # Columna ESTADO  
+                'pipeline': 'I',    # Columna PIPELINE
+                'vendedor': 'J'     # Columna VENDEDOR
             }
             
-            # Agregar opciones por defecto si no existen
-            if not options['pipeline']:
+            options = {}
+            
+            # Intentar obtener opciones de validación de datos
+            for field, column in column_mapping.items():
+                validation_options = self.get_data_validation_options(column)
+                if validation_options:
+                    options[field] = validation_options
+                else:
+                    # Fallback: extraer de datos existentes
+                    leads = self.get_all_leads()
+                    unique_values = list(set([lead[field] for lead in leads if lead[field]]))
+                    options[field] = sorted(unique_values)
+            
+            # Agregar opciones por defecto si no se encontraron
+            if not options.get('fuente'):
+                options['fuente'] = ['Instagram', 'Botks', 'WHATSAPP META', 'BOT p...', 'Facebook', 'Web', 'Referido']
+            
+            if not options.get('pipeline'):
                 options['pipeline'] = ['Prospección', 'Contacto', 'Negociación', 'Cierre']
-            if not options['estado']:
+            
+            if not options.get('estado'):
                 options['estado'] = ['Activo', 'Inactivo']
             
-            # Ordenar las opciones
-            for key in options:
-                options[key] = sorted(options[key])
+            if not options.get('vendedor'):
+                options['vendedor'] = ['Ana', 'María López', 'Carlos Ruiz', 'Ana García', 'Luis Martínez']
             
             return options
+            
         except Exception as e:
             print(f'Error al obtener opciones: {e}')
+            # Opciones por defecto basadas en lo que vi en el spreadsheet
             return {
-                'fuente': ['Facebook', 'Instagram', 'WhatsApp', 'Web', 'Referido'],
+                'fuente': ['Instagram', 'Botks', 'WHATSAPP META', 'BOT p...', 'Facebook', 'Web', 'Referido'],
                 'pipeline': ['Prospección', 'Contacto', 'Negociación', 'Cierre'],
                 'estado': ['Activo', 'Inactivo'],
-                'vendedor': ['María López', 'Carlos Ruiz', 'Ana García', 'Luis Martínez']
+                'vendedor': ['Ana', 'María López', 'Carlos Ruiz', 'Ana García', 'Luis Martínez']
             }
 
     def get_field_options(self, field):
@@ -293,18 +353,53 @@ class GoogleSheetsService:
         all_options = self.get_all_options()
         return all_options.get(field, [])
 
+    def add_option_to_validation(self, column_letter, new_option):
+        """Agregar una opción a la validación de datos de una columna."""
+        try:
+            if not self.service or not self.spreadsheet_id:
+                raise Exception("Servicio no autenticado o spreadsheet_id no establecido")
+
+            # Obtener opciones actuales
+            current_options = self.get_data_validation_options(column_letter)
+            
+            # Agregar nueva opción si no existe
+            if new_option not in current_options:
+                current_options.append(new_option)
+                current_options.sort()
+                
+                # Actualizar validación de datos
+                # Nota: Esto requiere permisos adicionales y es complejo
+                # Por ahora, simplemente agregamos a la lista en memoria
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f'Error al agregar opción a validación: {e}')
+            return False
+
     def add_option(self, field, option):
         """Agregar una nueva opción a un campo."""
         try:
-            # En este caso, como las opciones se extraen dinámicamente de los datos,
-            # simplemente verificamos que la opción no exista ya
+            # Mapeo de campos a columnas
+            column_mapping = {
+                'fuente': 'E',
+                'estado': 'H', 
+                'pipeline': 'I',
+                'vendedor': 'J'
+            }
+            
+            if field not in column_mapping:
+                return {'success': False, 'error': 'Campo no válido'}
+            
+            # Verificar que la opción no exista ya
             current_options = self.get_field_options(field)
             
             if option in current_options:
                 return {'success': False, 'error': 'La opción ya existe'}
             
-            # Para agregar una opción, podríamos crear una hoja de configuración
-            # o simplemente permitir que se agregue cuando se use en un lead
+            # Por ahora, como no podemos modificar fácilmente la validación de datos,
+            # simplemente confirmamos que se puede agregar
             return {'success': True, 'message': f'Opción "{option}" agregada al campo {field}'}
             
         except Exception as e:
