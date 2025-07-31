@@ -4,6 +4,7 @@ from flask_cors import CORS
 from src.models.user import db
 from src.routes.user import user_bp
 from src.routes.leads import leads_bp
+from src.services.google_sheets import sheets_service  # Importa el servicio de Sheets
 
 # Crear la app y configurar la carpeta de archivos estáticos
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
@@ -29,6 +30,10 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+# >>> NUEVO: establecer el ID del spreadsheet desde la variable de entorno
+# Esto asigna automáticamente sheets_service.spreadsheet_id si la variable está definida.
+sheets_service.set_spreadsheet_id(os.environ.get("SPREADSHEET_ID"))
 
 # Registrar los blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
