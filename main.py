@@ -1,9 +1,9 @@
 import os
 from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
-from models.user import db
-from routes.user import user_bp
-from routes.leads import leads_bp
+from src.models.user import db
+from src.routes.user import user_bp
+from src.routes.leads import leads_bp
 
 # Crear la app y configurar la carpeta de archivos estáticos
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
