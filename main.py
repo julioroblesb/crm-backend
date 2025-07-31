@@ -10,11 +10,12 @@ from src.services.google_sheets import sheets_service  # Servicio de Google Shee
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 
-# CORS: permitir front-ends comunes
+# CORS: permitir front-ends que van a consumir la API
 CORS(app, origins=[
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://*.vercel.app',
+    'https://crm-frontend-five-ruddy.vercel.app',      # ← dominio Vercel exacto
     'https://*.netlify.app',
     'https://*.railway.app',
     'https://*.render.com'
@@ -32,17 +33,12 @@ with app.app_context():
     db.create_all()
 
 # ──────────────────── GOOGLE SHEETS ────────────────────
-# >>> Autenticar con las variables de entorno GOOGLE_CREDENTIALS y GOOGLE_TOKEN
-sheets_service.authenticate()  # Si el token es válido, no hace flujo interactivo
-
-# >>> Establecer el ID del spreadsheet automáticamente
+sheets_service.authenticate()                       # usa credentials/token ya cargados
 sheets_service.set_spreadsheet_id(os.environ.get("SPREADSHEET_ID"))
-# (si la variable no existe, los endpoints seguirán devolviendo
-#  "spreadsheet_id no establecido" hasta que la configures)
 
 # ──────────────────── BLUEPRINTS ────────────────────
-app.register_blueprint(user_bp, url_prefix='/api')
-app.register_blueprint(leads_bp, url_prefix='/api')
+app.register_blueprint(user_bp,   url_prefix='/api')
+app.register_blueprint(leads_bp,  url_prefix='/api')
 
 # ──────────────────── HEALTH CHECK ────────────────────
 @app.route('/api/health')
@@ -57,7 +53,7 @@ def serve(path):
     if static_folder_path is None:
         return "Static folder not configured", 404
 
-    file_path = os.path.join(static_folder_path, path)
+    file_path  = os.path.join(static_folder_path, path)
     index_path = os.path.join(static_folder_path, 'index.html')
 
     if path and os.path.exists(file_path):
@@ -69,6 +65,6 @@ def serve(path):
 
 # ──────────────────── EJECUCIÓN LOCAL ────────────────────
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port  = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
     app.run(host='0.0.0.0', port=port, debug=debug)
