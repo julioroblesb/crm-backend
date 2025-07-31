@@ -70,6 +70,84 @@ def get_lead(lead_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# ----------------------- Gestión de Opciones --------------------- #
+
+@leads_bp.route('/options', methods=['GET'])
+def get_options():
+    """Obtener todas las opciones disponibles para los desplegables"""
+    try:
+        options = sheets_service.get_all_options()
+        return jsonify({"success": True, "data": options})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@leads_bp.route('/options/<field>', methods=['GET'])
+def get_field_options(field):
+    """Obtener opciones para un campo específico"""
+    try:
+        if field not in ['fuente', 'pipeline', 'estado', 'vendedor']:
+            return jsonify({"success": False, "error": "Campo no válido"}), 400
+        
+        options = sheets_service.get_field_options(field)
+        return jsonify({"success": True, "data": options})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@leads_bp.route('/options/<field>', methods=['POST'])
+def add_option(field):
+    """Agregar una nueva opción a un campo"""
+    try:
+        if field not in ['fuente', 'pipeline', 'estado', 'vendedor']:
+            return jsonify({"success": False, "error": "Campo no válido"}), 400
+        
+        data = request.get_json()
+        option = data.get('option')
+        
+        if not option:
+            return jsonify({"success": False, "error": "Opción requerida"}), 400
+        
+        result = sheets_service.add_option(field, option)
+        status = 201 if result.get('success') else 500
+        return jsonify(result), status
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@leads_bp.route('/options/<field>/<option>', methods=['PUT'])
+def update_option(field, option):
+    """Actualizar una opción existente"""
+    try:
+        if field not in ['fuente', 'pipeline', 'estado', 'vendedor']:
+            return jsonify({"success": False, "error": "Campo no válido"}), 400
+        
+        data = request.get_json()
+        new_option = data.get('new_option')
+        
+        if not new_option:
+            return jsonify({"success": False, "error": "Nueva opción requerida"}), 400
+        
+        result = sheets_service.update_option(field, option, new_option)
+        status = 200 if result.get('success') else 500
+        return jsonify(result), status
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@leads_bp.route('/options/<field>/<option>', methods=['DELETE'])
+def delete_option(field, option):
+    """Eliminar una opción"""
+    try:
+        if field not in ['fuente', 'pipeline', 'estado', 'vendedor']:
+            return jsonify({"success": False, "error": "Campo no válido"}), 400
+        
+        result = sheets_service.delete_option(field, option)
+        status = 200 if result.get('success') else 500
+        return jsonify(result), status
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # ----------------------- Métricas & Otros --------------------- #
 
 @leads_bp.route('/pipeline/stats', methods=['GET'])
@@ -153,3 +231,4 @@ def authenticate_sheets():
                         "error": "Error en la autenticación"}), 500
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+

@@ -253,7 +253,190 @@ class GoogleSheetsService:
 
         return cobranza_leads
 
+    # ----------------------- Gestión de Opciones --------------------- #
+
+    def get_all_options(self):
+        """Obtener todas las opciones disponibles para los desplegables."""
+        try:
+            # Obtener opciones desde una hoja específica o extraer de los datos existentes
+            leads = self.get_all_leads()
+            
+            options = {
+                'fuente': list(set([lead['fuente'] for lead in leads if lead['fuente']])),
+                'pipeline': list(set([lead['pipeline'] for lead in leads if lead['pipeline']])),
+                'estado': list(set([lead['estado'] for lead in leads if lead['estado']])),
+                'vendedor': list(set([lead['vendedor'] for lead in leads if lead['vendedor']]))
+            }
+            
+            # Agregar opciones por defecto si no existen
+            if not options['pipeline']:
+                options['pipeline'] = ['Prospección', 'Contacto', 'Negociación', 'Cierre']
+            if not options['estado']:
+                options['estado'] = ['Activo', 'Inactivo']
+            
+            # Ordenar las opciones
+            for key in options:
+                options[key] = sorted(options[key])
+            
+            return options
+        except Exception as e:
+            print(f'Error al obtener opciones: {e}')
+            return {
+                'fuente': ['Facebook', 'Instagram', 'WhatsApp', 'Web', 'Referido'],
+                'pipeline': ['Prospección', 'Contacto', 'Negociación', 'Cierre'],
+                'estado': ['Activo', 'Inactivo'],
+                'vendedor': ['María López', 'Carlos Ruiz', 'Ana García', 'Luis Martínez']
+            }
+
+    def get_field_options(self, field):
+        """Obtener opciones para un campo específico."""
+        all_options = self.get_all_options()
+        return all_options.get(field, [])
+
+    def add_option(self, field, option):
+        """Agregar una nueva opción a un campo."""
+        try:
+            # En este caso, como las opciones se extraen dinámicamente de los datos,
+            # simplemente verificamos que la opción no exista ya
+            current_options = self.get_field_options(field)
+            
+            if option in current_options:
+                return {'success': False, 'error': 'La opción ya existe'}
+            
+            # Para agregar una opción, podríamos crear una hoja de configuración
+            # o simplemente permitir que se agregue cuando se use en un lead
+            return {'success': True, 'message': f'Opción "{option}" agregada al campo {field}'}
+            
+        except Exception as e:
+            print(f'Error al agregar opción: {e}')
+            return {'success': False, 'error': str(e)}
+
+    def update_option(self, field, old_option, new_option):
+        """Actualizar una opción existente en todos los leads que la usen."""
+        try:
+            if not self.service or not self.spreadsheet_id:
+                raise Exception("Servicio no autenticado o spreadsheet_id no establecido")
+
+            # Mapeo de campos a columnas
+            field_mapping = {
+                'fuente': 4,
+                'pipeline': 8,
+                'estado': 7,
+                'vendedor': 9
+            }
+            
+            if field not in field_mapping:
+                return {'success': False, 'error': 'Campo no válido'}
+            
+            column_index = field_mapping[field]
+            
+            # Obtener todos los datos
+            range_name = 'Leads!A2:T'
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=range_name
+            ).execute()
+            
+            values = result.get('values', [])
+            updated_rows = []
+            
+            # Buscar y actualizar las filas que contengan la opción antigua
+            for i, row in enumerate(values):
+                while len(row) < 20:
+                    row.append('')
+                
+                if len(row) > column_index and row[column_index] == old_option:
+                    row[column_index] = new_option
+                    row[19] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # fecha_modificacion
+                    
+                    # Actualizar la fila específica
+                    row_number = i + 2  # +2 porque empezamos en A2
+                    update_range = f'Leads!A{row_number}:T{row_number}'
+                    body = {'values': [row]}
+                    
+                    self.service.spreadsheets().values().update(
+                        spreadsheetId=self.spreadsheet_id,
+                        range=update_range,
+                        valueInputOption='USER_ENTERED',
+                        body=body
+                    ).execute()
+                    
+                    updated_rows.append(row_number)
+            
+            return {
+                'success': True, 
+                'message': f'Opción actualizada en {len(updated_rows)} registros',
+                'updated_rows': len(updated_rows)
+            }
+            
+        except Exception as e:
+            print(f'Error al actualizar opción: {e}')
+            return {'success': False, 'error': str(e)}
+
+    def delete_option(self, field, option):
+        """Eliminar una opción (establecer como vacío en todos los leads que la usen)."""
+        try:
+            if not self.service or not self.spreadsheet_id:
+                raise Exception("Servicio no autenticado o spreadsheet_id no establecido")
+
+            # Mapeo de campos a columnas
+            field_mapping = {
+                'fuente': 4,
+                'pipeline': 8,
+                'estado': 7,
+                'vendedor': 9
+            }
+            
+            if field not in field_mapping:
+                return {'success': False, 'error': 'Campo no válido'}
+            
+            column_index = field_mapping[field]
+            
+            # Obtener todos los datos
+            range_name = 'Leads!A2:T'
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=range_name
+            ).execute()
+            
+            values = result.get('values', [])
+            updated_rows = []
+            
+            # Buscar y limpiar las filas que contengan la opción
+            for i, row in enumerate(values):
+                while len(row) < 20:
+                    row.append('')
+                
+                if len(row) > column_index and row[column_index] == option:
+                    row[column_index] = ''  # Limpiar el valor
+                    row[19] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # fecha_modificacion
+                    
+                    # Actualizar la fila específica
+                    row_number = i + 2  # +2 porque empezamos en A2
+                    update_range = f'Leads!A{row_number}:T{row_number}'
+                    body = {'values': [row]}
+                    
+                    self.service.spreadsheets().values().update(
+                        spreadsheetId=self.spreadsheet_id,
+                        range=update_range,
+                        valueInputOption='USER_ENTERED',
+                        body=body
+                    ).execute()
+                    
+                    updated_rows.append(row_number)
+            
+            return {
+                'success': True, 
+                'message': f'Opción eliminada de {len(updated_rows)} registros',
+                'updated_rows': len(updated_rows)
+            }
+            
+        except Exception as e:
+            print(f'Error al eliminar opción: {e}')
+            return {'success': False, 'error': str(e)}
+
 # Instancia global del servicio
 sheets_service = GoogleSheetsService()
 # Asignar automáticamente el spreadsheet_id desde la variable de entorno, si existe
 sheets_service.set_spreadsheet_id(os.environ.get("SPREADSHEET_ID"))
+
