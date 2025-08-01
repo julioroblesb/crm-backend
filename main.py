@@ -31,6 +31,24 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 
+# Registrar blueprints
+try:
+    from src import register_blueprints
+    register_blueprints(app)
+    logger.info("Blueprints registrados correctamente")
+except ImportError as e:
+    logger.error(f"Error importando blueprints: {e}")
+    # Fallback: registrar blueprints directamente
+    try:
+        from src.routes.leads import leads_bp
+        from src.routes.user import user_bp
+        
+        app.register_blueprint(leads_bp, url_prefix='/api')
+        app.register_blueprint(user_bp, url_prefix='/api')
+        logger.info("Blueprints registrados usando fallback")
+    except Exception as fallback_error:
+        logger.error(f"Error en fallback de blueprints: {fallback_error}")
+
 # Configuración CORS mejorada
 CORS(app, origins=[
     'http://localhost:3000',
