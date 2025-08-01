@@ -413,12 +413,18 @@ def get_leads():
             }
         }), 500
 
-@app.route('/api/metrics', methods=['GET'])
+@app.route('/api/dashboard/metrics', methods=['GET'])
 @handle_errors
-def get_metrics():
-    """Obtiene métricas detalladas del sistema"""
+def get_dashboard_metrics():
+    """Métricas para el panel de control (dashboard)"""
     metrics = get_system_metrics()
-    return jsonify(metrics)
+    return jsonify({
+        'leads': 120,  # Puedes hacer dinámico si quieres
+        'conversions': 45,  # Puedes hacer dinámico si quieres
+        'system': metrics.get('system', {}),
+        'google_sheets': metrics.get('google_sheets', {}),
+        'timestamp': metrics.get('timestamp')
+    })
 
 @app.route('/api/cache/clear', methods=['POST'])
 @handle_errors
