@@ -1,5 +1,5 @@
-# MÉTODO ALTERNATIVO - main.py con manejo robusto de credenciales
-# Usa este código si el método anterior sigue fallando:
+# MAIN.PY ACTUALIZADO CON GOOGLE SHEETS INTEGRADO
+# Reemplaza tu main.py actual con este código:
 
 import os
 import json
@@ -65,147 +65,41 @@ class SimpleCache:
 cache = SimpleCache()
 
 # ================================
-# CLIENTE DE GOOGLE SHEETS - MÉTODO ROBUSTO
+# CLIENTE DE GOOGLE SHEETS
 # ================================
 
 _google_sheets_client = None
 
 def get_google_sheets_client():
-    """Obtiene el cliente de Google Sheets con manejo robusto de credenciales"""
+    """Obtiene el cliente de Google Sheets"""
     global _google_sheets_client
     
     if _google_sheets_client is None:
         try:
-            # Método 1: Desde variable de entorno JSON
+            # Obtener credenciales desde variable de entorno
             credentials_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+            if not credentials_json:
+                logger.error("❌ GOOGLE_APPLICATION_CREDENTIALS_JSON no configurada")
+                raise ValueError("Credenciales de Google Sheets no configuradas")
             
-            if credentials_json:
-                logger.info("🔑 Intentando método 1: Variable JSON completa")
-                
-                # Limpiar y preparar el JSON
-                credentials_json = credentials_json.strip()
-                
-                # Reemplazar \\n con \n en el private_key
-                if '\\\\n' in credentials_json:
-                    credentials_json = credentials_json.replace('\\\\n', '\\n')
-                    logger.info("🔧 Corrigiendo escape de caracteres en private_key")
-                
-                try:
-                    credentials_info = json.loads(credentials_json)
-                    logger.info("✅ JSON parseado correctamente")
-                    
-                    # Verificar campos requeridos
-                    required_fields = ['type', 'private_key', 'client_email', 'project_id']
-                    missing_fields = [field for field in required_fields if field not in credentials_info]
-                    
-                    if missing_fields:
-                        logger.error(f"❌ Campos faltantes en JSON: {missing_fields}")
-                        raise ValueError(f"Campos faltantes: {missing_fields}")
-                    
-                    # Crear credenciales
-                    credentials = service_account.Credentials.from_service_account_info(
-                        credentials_info,
-                        scopes=['https://www.googleapis.com/auth/spreadsheets']
-                    )
-                    
-                    _google_sheets_client = gspread.authorize(credentials)
-                    logger.info("✅ Cliente de Google Sheets inicializado exitosamente (Método 1)")
-                    return _google_sheets_client
-                    
-                except json.JSONDecodeError as e:
-                    logger.error(f"❌ Error parseando JSON: {e}")
-                    logger.error(f"JSON recibido (primeros 100 chars): {credentials_json[:100]}...")
-                    
-            # Método 2: Construir JSON desde variables individuales
-            logger.info("🔑 Intentando método 2: Variables individuales")
+            # Parsear las credenciales JSON
+            credentials_info = json.loads(credentials_json)
             
-            project_id = os.environ.get('GOOGLE_PROJECT_ID', 'crm-leads-integration-467521')
-            private_key = os.environ.get('GOOGLE_PRIVATE_KEY')
-            client_email = os.environ.get('GOOGLE_CLIENT_EMAIL', 'crm-backend-service@crm-leads-integration-467521.iam.gserviceaccount.com')
-            
-            if private_key:
-                # Construir JSON manualmente
-                credentials_info = {
-                    "type": "service_account",
-                    "project_id": project_id,
-                    "private_key_id": "3e27e082a966b5090de2156b4d2a189b16ab90f9",
-                    "private_key": private_key.replace('\\n', '\n'),
-                    "client_email": client_email,
-                    "client_id": "113097377705993194956",
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                    "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{client_email.replace('@', '%40')}",
-                    "universe_domain": "googleapis.com"
-                }
-                
-                credentials = service_account.Credentials.from_service_account_info(
-                    credentials_info,
-                    scopes=['https://www.googleapis.com/auth/spreadsheets']
-                )
-                
-                _google_sheets_client = gspread.authorize(credentials)
-                logger.info("✅ Cliente de Google Sheets inicializado exitosamente (Método 2)")
-                return _google_sheets_client
-            
-            # Método 3: Credenciales hardcodeadas (solo para testing)
-            logger.info("🔑 Intentando método 3: Credenciales hardcodeadas")
-            
-            hardcoded_credentials = {
-                "type": "service_account",
-                "project_id": "crm-leads-integration-467521",
-                "private_key_id": "3e27e082a966b5090de2156b4d2a189b16ab90f9",
-                "private_key": """-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDT4T9WENF95BSy
-dwlOVfe/XYEFQetB9qXgoCx4j0UGbYkgA62GeIv8esRa5sMvkTF4XiLLA62/gkh1
-wpGXSOQm/TbtLl7bzXN4//r8dIWBAyINhyvIfvFRzYQ8RUKgOWyatZ+bcw/gzca3
-TLt/jdqTRwHoEM4+n2R6S3ClCRgCJi7Yz7iqG5ImwjaDGz0azPEe//R1HYj0JdZL
-YdEXu0LILxwh6QGTgN29/er3jnjMr3ZNSqyPbf43XX3uX8+KBmv3n8GMADQrezKa
-3BPonadAasmogjQYnWQaQCX8zkIgU47nmNr9IQMDoeiLWc9xVOtbMxgkDbZamlxT
-uzt2mSANAgMBAAECggEAMTNHrBJdNyTIqpVqL4rWbBVIIcKoIMnnxGSlVvx73I2A
-b1LzTzu8U+1lHa+iyO+oA2mmnipVRRh5f4DmInFua2BWyhY/uD45z3HvpAJhwu7J
-kEcgY18Y5fQ5fe5eVYroHXfJ34TFPeBCwes7SdgUlqkBOBR49AE6yYwtlOEq9kpf
-z3WGPzXWys8kipZgDN1S0lYSJcAmtWs8tllXbXFljHd1mPKcIOWkJEP3PnSyoZ6j
-ww0n0dzLaMbtk2ZFZb8uwZEw3Oro6om43TmmS18J70iuNpfCucB12XqHBAFRGZwf
-QLg8mRAKHjd5cpOjMDUyqCCRQTzKkLi0Zu/wiMYTAQKBgQDxoRSit/hqJwEbC6+A
-9R99baqzsJM0ILrJjEyFZIpTtmTg7AHqxUyUgeydjW9LhFpjoYw9ogeZDPBMXEwo
-Ya4E47sU2VM7EuBNXYgANDc6tGyez93uFLHyJU4E6bazSNasTN321y6rtbe4f6cv
-QVUBNBniK2E+vj4sDupeEb5pAQKBgQDgezgH++JZjLgDa37ZyZ0FruMiKcyMGflv
-xonhJkBysMtyEpPQrdWYS4My/RdxCS2mCTZFQllD65QTZAvTZh9XukvlHvqb4wVQ
-AC0lg7hlbyVB4AOrXOZ35nKI/co2mXYzZgO6mw729O8K0FG252TekdAZwG/yAKf8
-abNY2KrLDQKBgQDIHVUe0mh9WeJTiOEIV3qGAb5/ZTz0ziqEY5q4WyUo4YU4tp17
-131t/RB/B7TmAS5vF0szfC74tbuKMmKsiwF5cTXutXJ2GVMFH/JT4Orgxq6y9Irj
-8+XQGs87yGgUob2RI3QtS9eOREhtF+PZgi0pewH4y16VfS+2g3/c+qsNAQKBgBRL
-b4xhPFyGOVitzkEYVibeYdCD4OdFreRqGasOT0NPMoV0ooJ6RNZI9WqVsRnaD5N0
-P8DRN8rJMJD0OZF6KRlAUX48Z8HSK3fJHEvI9dHN05t6Cjri4j8yyWYTM8Xt597L
-uUiUniy7hiT/InQbxWXN3veFC1ngr09Fqx48MGy9AoGAXpIylrONdjc3d45VjcxF
-a7wzi8Rb/Jdmb/w0/7danoyHQW73+9Ei7JcUNm99fjNqvRZTwrsSZQL5ZbeY+hZf
-veHgVHQsPp6I6OrvgNnTuUUSwVpjKD6waFc3GfCy54g3BtRKYpFaU8SJC1wFx/s0
-VnHakOukZx+It8jd9fnYZTE=
------END PRIVATE KEY-----""",
-                "client_email": "crm-backend-service@crm-leads-integration-467521.iam.gserviceaccount.com",
-                "client_id": "113097377705993194956",
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/crm-backend-service%40crm-leads-integration-467521.iam.gserviceaccount.com",
-                "universe_domain": "googleapis.com"
-            }
-            
+            # Crear credenciales de Service Account
             credentials = service_account.Credentials.from_service_account_info(
-                hardcoded_credentials,
+                credentials_info,
                 scopes=['https://www.googleapis.com/auth/spreadsheets']
             )
             
+            # Autorizar cliente de gspread
             _google_sheets_client = gspread.authorize(credentials)
-            logger.info("✅ Cliente de Google Sheets inicializado exitosamente (Método 3 - Hardcoded)")
-            return _google_sheets_client
+            logger.info("✅ Cliente de Google Sheets inicializado exitosamente")
             
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ Error parseando JSON de credenciales: {e}")
+            raise
         except Exception as e:
             logger.error(f"❌ Error inicializando cliente de Google Sheets: {e}")
-            logger.error(f"Tipo de error: {type(e).__name__}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
     
     return _google_sheets_client
@@ -214,7 +108,11 @@ def get_spreadsheet():
     """Obtiene la hoja de cálculo configurada"""
     try:
         client = get_google_sheets_client()
-        spreadsheet_id = os.environ.get('SPREADSHEET_ID', '14_aoZwjsIYdQPyWbaBalGTxkGk0MGZYOiplwJxmDAtY')
+        spreadsheet_id = os.environ.get('SPREADSHEET_ID')
+        
+        if not spreadsheet_id:
+            logger.error("❌ SPREADSHEET_ID no configurada")
+            raise ValueError("SPREADSHEET_ID no está configurada")
         
         spreadsheet = client.open_by_key(spreadsheet_id)
         logger.info(f"✅ Conexión exitosa a Google Sheets: {spreadsheet.title}")
@@ -285,7 +183,7 @@ def get_leads_from_sheets():
         ]
 
 # ================================
-# RUTAS DE LA API (IGUAL QUE ANTES)
+# RUTAS DE LA API
 # ================================
 
 @app.route('/api/health', methods=['GET'])
@@ -307,14 +205,13 @@ def health_check():
     return jsonify({
         'status': 'healthy' if sheets_status == 'healthy' else 'degraded',
         'timestamp': datetime.now().isoformat(),
-        'version': '4.1.0-robust-credentials',
+        'version': '4.0.0-sheets-integrated',
         'google_sheets': {
             'status': sheets_status,
             'info': sheets_info
         },
         'environment': {
-            'has_credentials_json': bool(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')),
-            'has_private_key': bool(os.environ.get('GOOGLE_PRIVATE_KEY')),
+            'has_credentials': bool(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')),
             'has_spreadsheet_id': bool(os.environ.get('SPREADSHEET_ID'))
         }
     })
@@ -488,8 +385,8 @@ def serve_frontend(path):
         return send_from_directory(app.static_folder, path)
     else:
         return jsonify({
-            'message': '🚀 CRM Backend con Google Sheets (Método Robusto)',
-            'version': '4.1.0-robust-credentials',
+            'message': '🚀 CRM Backend con Google Sheets integrado',
+            'version': '4.0.0-sheets-integrated',
             'timestamp': datetime.now().isoformat(),
             'endpoints': [
                 'GET /api/health - Health check con Google Sheets',
@@ -499,10 +396,10 @@ def serve_frontend(path):
                 'GET /api/options - Opciones del sistema',
                 'POST /api/cache/clear - Limpiar caché'
             ],
-            'status': '✅ FUNCIONANDO CON GOOGLE SHEETS (ROBUSTO)',
+            'status': '✅ FUNCIONANDO CON GOOGLE SHEETS',
             'google_sheets': {
-                'configured': bool(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')) or bool(os.environ.get('GOOGLE_PRIVATE_KEY')),
-                'spreadsheet_id': os.environ.get('SPREADSHEET_ID', '14_aoZwjsIYdQPyWbaBalGTxkGk0MGZYOiplwJxmDAtY')
+                'configured': bool(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')),
+                'spreadsheet_id': os.environ.get('SPREADSHEET_ID', 'not_configured')
             }
         })
 
@@ -515,20 +412,18 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
     
-    logger.info(f"🚀 Iniciando CRM Backend con Google Sheets (Robusto) en puerto {port}")
+    logger.info(f"🚀 Iniciando CRM Backend con Google Sheets en puerto {port}")
     
     # Verificar configuración
     if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON'):
-        logger.info("✅ Credenciales JSON configuradas")
-    elif os.environ.get('GOOGLE_PRIVATE_KEY'):
-        logger.info("✅ Private key individual configurada")
+        logger.info("✅ Credenciales de Google Sheets configuradas")
     else:
-        logger.info("✅ Usando credenciales hardcodeadas (método de emergencia)")
+        logger.warning("⚠️ Credenciales de Google Sheets NO configuradas")
     
     if os.environ.get('SPREADSHEET_ID'):
         logger.info("✅ SPREADSHEET_ID configurado")
     else:
-        logger.info("✅ Usando SPREADSHEET_ID por defecto")
+        logger.warning("⚠️ SPREADSHEET_ID NO configurado")
     
     logger.info("✅ /api/metrics - DISPONIBLE (con datos reales)")
     logger.info("✅ /api/leads - DISPONIBLE (con datos reales)")
