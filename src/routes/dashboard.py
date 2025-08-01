@@ -1,12 +1,12 @@
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from flask import Blueprint, jsonify
 
-router = APIRouter()
+dashboard_bp = Blueprint('dashboard', __name__)
 
-@router.get("/dashboard/metrics")
-async def get_dashboard_metrics():
-    return JSONResponse(content={
-        "totalLeads": 120,
+@dashboard_bp.route('/dashboard/metrics', methods=['GET'])
+def get_dashboard_metrics():
+    """Métricas generales para el dashboard"""
+    return jsonify({
+        "totalLeads": 128,
         "convertedLeads": 48,
         "pipelineProgress": 72
     })
