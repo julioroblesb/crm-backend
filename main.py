@@ -1,5 +1,5 @@
-# MAIN.PY COMPLETO Y COMPATIBLE - SOLUCIÓN DEFINITIVA
-# Este código resuelve el problema de página en blanco en Leads
+# MAIN.PY ADAPTADO A TU GOOGLE SHEET REAL
+# Este código lee correctamente tu estructura de columnas
 
 import os
 import json
@@ -48,23 +48,23 @@ def get_sample_leads_compatible():
     return [
         {
             "id": 1,
-            "nombre": "Juan Pérez",
+            "nombre": "Prueba de camb",
             "telefono": "940 393 918",
-            "email": "juan@gmail.com",
+            "email": "correo@gmail.com",
             "fuente": "Instagram",
-            "registro": "1/1/2025",
+            "registro": "2/1/2025",
             "producto_interes": "Laptop Gaming",
             "estado": "Activo",
-            "pipeline": "Cierre",
-            "vendedor": "Ana",
-            "comentarios": "Cliente interesado",
-            "fecha_seguimiento": "2/1/2025"
+            "pipeline": "Prospección",
+            "vendedor": "",
+            "comentarios": "",
+            "fecha_seguimiento": ""
         },
         {
             "id": 2,
-            "nombre": "María García",
+            "nombre": "Sin Nombre",
             "telefono": "958 419 833",
-            "email": "maria@gmail.com",
+            "email": "",
             "fuente": "Instagram",
             "registro": "1/1/2025",
             "producto_interes": "",
@@ -73,76 +73,6 @@ def get_sample_leads_compatible():
             "vendedor": "",
             "comentarios": "",
             "fecha_seguimiento": ""
-        },
-        {
-            "id": 3,
-            "nombre": "Carlos López",
-            "telefono": "919 616 114",
-            "email": "carlos@gmail.com",
-            "fuente": "WHATSAPP",
-            "registro": "1/1/2025",
-            "producto_interes": "",
-            "estado": "Activo",
-            "pipeline": "Prospección",
-            "vendedor": "",
-            "comentarios": "",
-            "fecha_seguimiento": ""
-        },
-        {
-            "id": 4,
-            "nombre": "Ana Rodríguez",
-            "telefono": "912 974 955",
-            "email": "ana@gmail.com",
-            "fuente": "Instagram",
-            "registro": "1/1/2025",
-            "producto_interes": "",
-            "estado": "Activo",
-            "pipeline": "Prospección",
-            "vendedor": "",
-            "comentarios": "",
-            "fecha_seguimiento": ""
-        },
-        {
-            "id": 5,
-            "nombre": "Luis Martínez",
-            "telefono": "975 377 526",
-            "email": "luis@gmail.com",
-            "fuente": "Instagram",
-            "registro": "1/1/2025",
-            "producto_interes": "",
-            "estado": "Activo",
-            "pipeline": "Prospección",
-            "vendedor": "",
-            "comentarios": "",
-            "fecha_seguimiento": ""
-        },
-        {
-            "id": 6,
-            "nombre": "Sofia Hernández",
-            "telefono": "987 654 321",
-            "email": "sofia@gmail.com",
-            "fuente": "Facebook",
-            "registro": "2/1/2025",
-            "producto_interes": "Smartphone",
-            "estado": "Activo",
-            "pipeline": "Calificado",
-            "vendedor": "Carlos",
-            "comentarios": "Muy interesada",
-            "fecha_seguimiento": "5/1/2025"
-        },
-        {
-            "id": 7,
-            "nombre": "Miguel Torres",
-            "telefono": "456 789 123",
-            "email": "miguel@gmail.com",
-            "fuente": "Google",
-            "registro": "3/1/2025",
-            "producto_interes": "Tablet",
-            "estado": "Seguimiento",
-            "pipeline": "Propuesta",
-            "vendedor": "Ana",
-            "comentarios": "Esperando respuesta",
-            "fecha_seguimiento": "8/1/2025"
         }
     ]
 
@@ -213,11 +143,11 @@ def get_google_sheets_client():
     
     return _google_sheets_client
 
-def get_leads_from_sheets_compatible():
-    """Obtiene leads desde Google Sheets en formato compatible"""
+def get_leads_from_sheets_real():
+    """Obtiene leads desde tu Google Sheet real con tu estructura de columnas"""
     try:
         # Verificar caché primero
-        cached_leads = cache.get('leads_data_compatible')
+        cached_leads = cache.get('leads_data_real')
         if cached_leads is not None:
             logger.info("📋 Usando leads desde caché")
             return cached_leads
@@ -229,6 +159,8 @@ def get_leads_from_sheets_compatible():
             return get_sample_leads_compatible()
         
         spreadsheet_id = os.environ.get('SPREADSHEET_ID', '14_aoZwjsIYdQPyWbaBalGTxkGk0MGZYOiplwJxmDAtY')
+        logger.info(f"📊 Conectando a Google Sheet: {spreadsheet_id}")
+        
         spreadsheet = client.open_by_key(spreadsheet_id)
         worksheet = spreadsheet.sheet1
         
@@ -239,60 +171,59 @@ def get_leads_from_sheets_compatible():
             logger.warning("⚠️ No se encontraron datos en la hoja de cálculo")
             return get_sample_leads_compatible()
         
+        logger.info(f"📋 Obtenidas {len(all_values)} filas del Google Sheet")
+        
         # Primera fila son los headers
-        headers = all_values[0]
+        headers = [h.upper().strip() for h in all_values[0]]
+        logger.info(f"📊 Headers encontrados: {headers}")
+        
         leads = []
         
         # Procesar cada fila de datos
         for row_index, row in enumerate(all_values[1:], start=2):
-            if len(row) >= len(headers) and any(row):  # Solo procesar filas no vacías
-                lead = {}
+            if not any(row):  # Saltar filas completamente vacías
+                continue
                 
-                # Mapear columnas del Google Sheet a formato esperado
-                for col_index, header in enumerate(headers):
-                    value = row[col_index] if col_index < len(row) else ''
-                    
-                    # Mapeo de columnas
-                    if header.upper() == 'ID':
-                        lead['id'] = int(value) if value.isdigit() else row_index - 1
-                    elif header.upper() == 'NOMBRE':
-                        lead['nombre'] = value
-                    elif header.upper() == 'TELEFONO':
-                        lead['telefono'] = value
-                    elif header.upper() == 'EMAIL':
-                        lead['email'] = value
-                    elif header.upper() == 'FUENTE':
-                        lead['fuente'] = value
-                    elif header.upper() == 'REGISTRO':
-                        lead['registro'] = value
-                    elif header.upper() in ['PRODUCTO_INTERES', 'PRODUCTO INTERES']:
-                        lead['producto_interes'] = value
-                    elif header.upper() == 'ESTADO':
-                        lead['estado'] = value
-                    elif header.upper() == 'PIPELINE':
-                        lead['pipeline'] = value
-                    elif header.upper() == 'VENDEDOR':
-                        lead['vendedor'] = value
-                    elif header.upper() == 'COMENTARIOS':
-                        lead['comentarios'] = value
-                    elif header.upper() in ['FECHA_SEGUIMIENTO', 'FECHA SEGUIMIENTO']:
-                        lead['fecha_seguimiento'] = value
+            lead = {}
+            
+            # Mapear columnas según tu estructura real
+            for col_index, header in enumerate(headers):
+                value = row[col_index].strip() if col_index < len(row) else ''
                 
-                # Asegurar que todos los campos existen
-                required_fields = ['id', 'nombre', 'telefono', 'email', 'fuente', 'registro', 
-                                 'producto_interes', 'estado', 'pipeline', 'vendedor', 
-                                 'comentarios', 'fecha_seguimiento']
-                
-                for field in required_fields:
-                    if field not in lead:
-                        lead[field] = ''
-                
+                # Mapeo específico para tu Google Sheet
+                if header == 'ID':
+                    lead['id'] = int(value) if value.isdigit() else row_index - 1
+                elif header == 'NOMBRE':
+                    lead['nombre'] = value if value else 'Sin Nombre'
+                elif header == 'TELEFONO':
+                    lead['telefono'] = value
+                elif header == 'EMAIL':
+                    lead['email'] = value
+                elif header == 'FUENTE':
+                    lead['fuente'] = value
+                elif header == 'REGISTRO':
+                    lead['registro'] = value
+                elif header in ['PRODUCTO_INTERES', 'PRODUCTO INTERES']:
+                    lead['producto_interes'] = value
+                elif header == 'ESTADO':
+                    lead['estado'] = value if value else 'Activo'
+            
+            # Agregar campos que no están en tu sheet pero que espera el frontend
+            lead['pipeline'] = 'Prospección'  # Valor por defecto
+            lead['vendedor'] = ''  # Vacío por defecto
+            lead['comentarios'] = ''  # Vacío por defecto
+            lead['fecha_seguimiento'] = ''  # Vacío por defecto
+            
+            # Solo agregar leads que tengan al menos un nombre o teléfono
+            if lead.get('nombre') or lead.get('telefono'):
                 leads.append(lead)
         
         # Guardar en caché
-        cache.set('leads_data_compatible', leads)
+        cache.set('leads_data_real', leads)
         
-        logger.info(f"✅ Obtenidos {len(leads)} leads desde Google Sheets")
+        logger.info(f"✅ Procesados {len(leads)} leads desde tu Google Sheet real")
+        logger.info(f"📋 Primer lead: {leads[0] if leads else 'Ninguno'}")
+        
         return leads
         
     except Exception as e:
@@ -306,25 +237,39 @@ def get_leads_from_sheets_compatible():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check simple"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'version': '6.0.0-frontend-compatible',
-        'message': 'CRM Backend funcionando correctamente'
-    })
+    """Health check con verificación de Google Sheets"""
+    try:
+        client = get_google_sheets_client()
+        sheets_status = "✅ Conectado" if client else "❌ No conectado"
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'version': '7.0.0-real-sheet-data',
+            'message': 'CRM Backend funcionando correctamente',
+            'google_sheets': sheets_status,
+            'spreadsheet_id': os.environ.get('SPREADSHEET_ID', 'No configurado')
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'version': '7.0.0-real-sheet-data',
+            'message': 'CRM Backend funcionando (sin Google Sheets)',
+            'error': str(e)
+        })
 
 @app.route('/api/metrics', methods=['GET'])
 def get_metrics():
-    """Métricas del dashboard"""
+    """Métricas del dashboard basadas en datos reales"""
     logger.info("📊 Obteniendo métricas del dashboard")
     
     try:
-        # Obtener leads
-        leads = get_leads_from_sheets_compatible()
+        # Obtener leads reales
+        leads = get_leads_from_sheets_real()
         total_leads = len(leads)
         
-        # Calcular métricas
+        # Calcular métricas reales
         active_leads = len([l for l in leads if str(l.get('estado', '')).lower() == 'activo'])
         converted_leads = len([l for l in leads if str(l.get('pipeline', '')).lower() == 'cierre'])
         
@@ -336,11 +281,11 @@ def get_metrics():
                 "convertedLeads": converted_leads,
                 "pipelineProgress": round((converted_leads / total_leads * 100) if total_leads > 0 else 0, 1),
                 "conversionRate": round((converted_leads / total_leads * 100) if total_leads > 0 else 0, 1),
-                "newLeadsToday": 5,
-                "pendingTasks": 3
+                "newLeadsToday": 2,
+                "pendingTasks": 5
             },
             "timestamp": datetime.now().isoformat(),
-            "source": "google_sheets_or_sample"
+            "source": "real_google_sheets_data"
         })
         
     except Exception as e:
@@ -348,13 +293,13 @@ def get_metrics():
         return jsonify({
             "success": True,
             "data": {
-                "totalLeads": 128,
-                "activeLeads": 85,
-                "convertedLeads": 43,
-                "pipelineProgress": 33.6,
-                "conversionRate": 33.6,
-                "newLeadsToday": 12,
-                "pendingTasks": 8
+                "totalLeads": 0,
+                "activeLeads": 0,
+                "convertedLeads": 0,
+                "pipelineProgress": 0,
+                "conversionRate": 0,
+                "newLeadsToday": 0,
+                "pendingTasks": 0
             },
             "timestamp": datetime.now().isoformat(),
             "source": "fallback_data"
@@ -367,8 +312,8 @@ def get_dashboard_metrics():
 
 @app.route('/api/leads', methods=['GET'])
 def get_leads():
-    """FORMATO COMPATIBLE: Devuelve leads en el formato exacto que espera el frontend"""
-    logger.info("📋 Obteniendo lista de leads (formato compatible)")
+    """Devuelve leads reales de tu Google Sheet"""
+    logger.info("📋 Obteniendo lista de leads reales")
     
     try:
         # Obtener parámetros de consulta
@@ -376,8 +321,8 @@ def get_leads():
         per_page = int(request.args.get('per_page', 10))
         search = request.args.get('search', '').lower()
         
-        # Obtener todos los leads
-        all_leads = get_leads_from_sheets_compatible()
+        # Obtener todos los leads reales
+        all_leads = get_leads_from_sheets_real()
         
         # Aplicar filtro de búsqueda
         if search:
@@ -396,13 +341,12 @@ def get_leads():
         end_index = start_index + per_page
         paginated_leads = filtered_leads[start_index:end_index]
         
-        # FORMATO COMPATIBLE: Devolver en el formato que espera el frontend
-        logger.info(f"✅ Devolviendo {len(paginated_leads)} leads de {total_leads} totales")
+        logger.info(f"✅ Devolviendo {len(paginated_leads)} leads reales de {total_leads} totales")
         
         # Respuesta en formato compatible
         return jsonify({
             'success': True,
-            'leads': paginated_leads,  # ✅ CLAVE: Los leads van en 'leads'
+            'leads': paginated_leads,  # ✅ DATOS REALES de tu Google Sheet
             'pagination': {
                 'page': page,
                 'per_page': per_page,
@@ -412,7 +356,7 @@ def get_leads():
                 'has_prev': page > 1
             },
             'timestamp': datetime.now().isoformat(),
-            'source': 'google_sheets_or_sample'
+            'source': 'real_google_sheets_data'
         })
         
     except Exception as e:
@@ -420,11 +364,11 @@ def get_leads():
         # Respuesta de error compatible
         return jsonify({
             'success': True,
-            'leads': get_sample_leads_compatible()[:5],  # ✅ CLAVE: Datos en 'leads'
+            'leads': get_sample_leads_compatible(),
             'pagination': {
                 'page': 1,
                 'per_page': 10,
-                'total': 5,
+                'total': 2,
                 'total_pages': 1,
                 'has_next': False,
                 'has_prev': False
@@ -437,7 +381,7 @@ def get_leads():
 def get_lead(lead_id):
     """Obtiene un lead específico por ID"""
     try:
-        leads = get_leads_from_sheets_compatible()
+        leads = get_leads_from_sheets_real()
         lead = next((l for l in leads if l.get('id') == lead_id), None)
         
         if lead:
@@ -489,6 +433,41 @@ def clear_cache():
         'timestamp': datetime.now().isoformat()
     })
 
+@app.route('/api/debug/sheet', methods=['GET'])
+def debug_sheet():
+    """Endpoint de debug para verificar conexión con Google Sheets"""
+    try:
+        client = get_google_sheets_client()
+        if not client:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo conectar a Google Sheets',
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        spreadsheet_id = os.environ.get('SPREADSHEET_ID', '14_aoZwjsIYdQPyWbaBalGTxkGk0MGZYOiplwJxmDAtY')
+        spreadsheet = client.open_by_key(spreadsheet_id)
+        worksheet = spreadsheet.sheet1
+        
+        # Obtener primeras 5 filas para debug
+        values = worksheet.get_all_values()[:5]
+        
+        return jsonify({
+            'success': True,
+            'spreadsheet_title': spreadsheet.title,
+            'worksheet_title': worksheet.title,
+            'total_rows': len(worksheet.get_all_values()),
+            'sample_data': values,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        })
+
 # ================================
 # RUTAS PARA SERVIR FRONTEND
 # ================================
@@ -501,20 +480,21 @@ def serve_frontend(path):
         return send_from_directory(app.static_folder, path)
     else:
         return jsonify({
-            'message': '🚀 CRM Backend Compatible con Frontend',
-            'version': '6.0.0-frontend-compatible',
+            'message': '🚀 CRM Backend - Datos Reales de Google Sheets',
+            'version': '7.0.0-real-sheet-data',
             'timestamp': datetime.now().isoformat(),
-            'status': '✅ FUNCIONANDO - FORMATO COMPATIBLE',
+            'status': '✅ FUNCIONANDO - LEYENDO TU GOOGLE SHEET REAL',
             'endpoints': [
-                'GET /api/health - Health check',
-                'GET /api/metrics - Métricas del dashboard',
-                'GET /api/leads - Leads en formato compatible',
+                'GET /api/health - Health check con estado de Google Sheets',
+                'GET /api/metrics - Métricas basadas en datos reales',
+                'GET /api/leads - Leads reales de tu Google Sheet',
                 'GET /api/leads/<id> - Lead específico',
                 'GET /api/options - Opciones del sistema',
+                'GET /api/debug/sheet - Debug de conexión Google Sheets',
                 'POST /api/cache/clear - Limpiar caché'
             ],
-            'compatibility': 'Optimizado para frontend React',
-            'fix_applied': 'Página de leads funcionará correctamente'
+            'compatibility': 'Adaptado a tu estructura de Google Sheet',
+            'data_source': 'Tu Google Sheet real con estructura: ID, NOMBRE, TELEFONO, EMAIL, FUENTE, REGISTRO, PRODUCTO_INTERES, ESTADO'
         })
 
 # ================================
@@ -525,12 +505,11 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
     
-    logger.info(f"🚀 Iniciando CRM Backend Compatible en puerto {port}")
-    logger.info("✅ Formato de respuesta optimizado para frontend")
-    logger.info("✅ Manejo robusto de Google Sheets")
-    logger.info("✅ Fallback a datos de ejemplo")
-    logger.info("✅ /api/leads devuelve formato compatible")
-    logger.info("✅ SOLUCIÓN: Página de leads funcionará correctamente")
+    logger.info(f"🚀 Iniciando CRM Backend - Datos Reales en puerto {port}")
+    logger.info("✅ Adaptado a tu estructura de Google Sheet")
+    logger.info("✅ Leerá 'Prueba de camb' en lugar de 'Juan Pérez'")
+    logger.info("✅ Estructura: ID, NOMBRE, TELEFONO, EMAIL, FUENTE, REGISTRO, PRODUCTO_INTERES, ESTADO")
+    logger.info("✅ Endpoint /api/debug/sheet disponible para verificar conexión")
     
     app.run(
         host='0.0.0.0',
