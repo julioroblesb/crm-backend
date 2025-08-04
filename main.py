@@ -33,6 +33,7 @@ with app.app_context():
 
 # >>> NUEVO: establecer el ID del spreadsheet desde la variable de entorno
 # Esto asigna automáticamente sheets_service.spreadsheet_id si la variable está definida.
+sheets_service.authenticate()
 sheets_service.set_spreadsheet_id(os.environ.get("SPREADSHEET_ID"))
 
 # Registrar los blueprints
