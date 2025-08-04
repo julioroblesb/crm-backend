@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import tempfile
 from datetime import datetime
 from google.auth.transport.requests import Request
@@ -7,6 +8,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from google.oauth2 import service_account  
+
 
 class GoogleSheetsService:
     def __init__(self):
@@ -21,6 +24,10 @@ class GoogleSheetsService:
         se utiliza directamente; si está expirado y tiene refresh token, se
         refresca; y si no existe, se abre un flujo OAuth local (sólo en entornos
         de desarrollo).
+        """
+        # -------------------------------------------
+        # Código anterior (comentado para referencia)
+        # -------------------------------------------
         """
         # 1. Leer JSON de las variables de entorno
         creds_json = os.environ.get("GOOGLE_CREDENTIALS")
@@ -65,6 +72,28 @@ class GoogleSheetsService:
         # 6. Construir el servicio de Google Sheets
         self.service = build('sheets', 'v4', credentials=creds)
         return True
+        """
+
+        # -------------------------------------------
+        # Autentica con la API de Google Sheets usando credenciales
+        # decodificadas desde una variable de entorno Base64.
+        # -------------------------------------------
+        try:
+            creds_base64 = os.environ.get("GOOGLE_CREDENTIALS_BASE64")
+            if not creds_base64:
+                raise ValueError(
+                    "No se encontraron credenciales. "
+                    "Configura la variable de entorno GOOGLE_CREDENTIALS_BASE64."
+                )
+            creds_json = base64.b64decode(creds_base64).decode("utf-8")
+            creds_dict = json.loads(creds_json)
+            creds = service_account.Credentials.from_service_account_info(
+                creds_dict, scopes=self.SCOPES
+            )
+            self.service = build("sheets", "v4", credentials=creds)
+            print("Autenticado con Google Sheets correctamente.")
+        except Exception as e:
+            raise Exception(f"Error al autenticar con Google Sheets: {e}")
 
     def set_spreadsheet_id(self, spreadsheet_id):
         """Establecer el ID del spreadsheet a usar."""
@@ -83,35 +112,20 @@ class GoogleSheetsService:
             ).execute()
 
             values = result.get('values', [])
+
+            headers = [
+                "id", "nombre", "telefono", "email", "fuente", "registro",
+                "producto_interes", "estado", "pipeline", "vendedor", "comentarios",
+                "fecha_ultimo_contacto", "proxima_accion", "fecha_proxima_accion",
+                "conversacion", "tipo_pago", "monto_pendiente", "comprobante",
+                "fecha_creacion", "fecha_modificacion"
+            ]
+
             leads = []
-
-            for i, row in enumerate(values):
-                # Asegurar que la fila tenga todas las columnas
-                while len(row) < 20:
+            for row in values:
+                while len(row) < len(headers):
                     row.append('')
-
-                lead = {
-                    'id': i + 1,
-                    'nombre': row[1] if len(row) > 1 else '',
-                    'telefono': row[2] if len(row) > 2 else '',
-                    'email': row[3] if len(row) > 3 else '',
-                    'fuente': row[4] if len(row) > 4 else '',
-                    'registro': row[5] if len(row) > 5 else '',
-                    'producto_interes': row[6] if len(row) > 6 else '',
-                    'estado': row[7] if len(row) > 7 else '',
-                    'pipeline': row[8] if len(row) > 8 else '',
-                    'vendedor': row[9] if len(row) > 9 else '',
-                    'comentarios': row[10] if len(row) > 10 else '',
-                    'fecha_ultimo_contacto': row[11] if len(row) > 11 else '',
-                    'proxima_accion': row[12] if len(row) > 12 else '',
-                    'fecha_proxima_accion': row[13] if len(row) > 13 else '',
-                    'conversacion': row[14] if len(row) > 14 else '',
-                    'tipo_pago': row[15] if len(row) > 15 else '',
-                    'monto_pendiente': row[16] if len(row) > 16 else '',
-                    'comprobante': row[17] if len(row) > 17 else '',
-                    'fecha_creacion': row[18] if len(row) > 18 else '',
-                    'fecha_modificacion': row[19] if len(row) > 19 else ''
-                }
+                lead = {headers[i]: row[i] for i in range(len(headers))}
                 leads.append(lead)
 
             return leads
@@ -156,7 +170,7 @@ class GoogleSheetsService:
             range_name = 'Leads!A:T'
             body = {'values': [values]}
 
-            result = self.service.spreadsheets().values().append(
+            self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
                 range=range_name,
                 valueInputOption='USER_ENTERED',
@@ -203,7 +217,7 @@ class GoogleSheetsService:
             updated_values[19] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
             body = {'values': [updated_values]}
-            result = self.service.spreadsheets().values().update(
+            self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
                 range=current_range,
                 valueInputOption='USER_ENTERED',
