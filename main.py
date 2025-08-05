@@ -10,17 +10,25 @@ from src.services.google_sheets import sheets_service  # Importa el servicio de 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 
-# Configurar CORS para permitir requests desde distintos orígenes
-CORS(app, origins=[
-    'http://localhost:5173', 
-    'http://127.0.0.1:5173',
-    'https://crm-frontend-five-ruddy.vercel.app',
-    'https://*.vercel.app',
-    'https://*.netlify.app',
-    'https://*.railway.app',
-    'https://*.render.com', 
-])
+# Regex para subdominios de vercel, netlify, railway, render (solo HTTPS)
+allowed_origins_regex = r"^https:\/\/([a-zA-Z0-9-]+\.)*(vercel\.app|netlify\.app|railway\.app|render\.com)(:\d+)?$"
 
+# Orígenes explícitos locales que usas en desarrollo
+local_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Configurar CORS para permitir requests desde distintos orígenes
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": local_origins + [allowed_origins_regex]
+        }
+    },
+    supports_credentials=True  # quita si no necesitas credenciales como cookies
+)
 # Crear la carpeta de base de datos si no existe
 os.makedirs(os.path.join(os.path.dirname(__file__), 'database'), exist_ok=True)
 
