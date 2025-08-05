@@ -18,7 +18,7 @@ CORS(app, origins=[
     'https://*.netlify.app',
     'https://*.railway.app',
     'https://*.render.com',
-    'https://github.com/julioroblesb/crm-backend.git'
+    'https://crm-frontend-five-ruddy.vercel.app/dashboard'
 ])
 
 # Crear la carpeta de base de datos si no existe
