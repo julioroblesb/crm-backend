@@ -14,11 +14,11 @@ app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 CORS(app, origins=[
     'http://localhost:5173', 
     'http://127.0.0.1:5173',
+    'https://crm-frontend-five-ruddy.vercel.app',
     'https://*.vercel.app',
     'https://*.netlify.app',
     'https://*.railway.app',
-    'https://*.render.com',
-    'https://crm-frontend-five-ruddy.vercel.app/dashboard'
+    'https://*.render.com', 
 ])
 
 # Crear la carpeta de base de datos si no existe
